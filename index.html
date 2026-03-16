@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>콘엑스 세이프 - 인지 안전 테스트</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; overflow: hidden; }
+
+  /* Screens */
+  .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; }
+  .screen.active { display: flex; }
+
+  /* Home */
+  #home { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%); }
+  #home h1 { font-size: 2.8rem; font-weight: 800; background: linear-gradient(135deg, #4fc3f7, #7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.3rem; }
+  #home .subtitle { color: #888; font-size: 1rem; margin-bottom: 2.5rem; }
+  .test-list { display: flex; flex-direction: column; gap: 0.8rem; width: 340px; }
+  .test-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; }
+  .test-item .name { font-weight: 600; }
+  .test-item .meta { font-size: 0.8rem; color: #888; }
+  .test-item .check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+  .test-item .check.done { border-color: #4caf50; color: #4caf50; }
+
+  .btn { padding: 0.9rem 2.5rem; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, #4fc3f7, #7c4dff); color: #fff; margin-top: 1.5rem; }
+  .btn-primary:hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(124,77,255,0.4); }
+  .btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; margin-top: 0.8rem; font-size: 0.9rem; }
+
+  /* Common test UI */
+  .test-header { position: absolute; top: 1.5rem; left: 50%; transform: translateX(-50%); text-align: center; }
+  .test-header h2 { font-size: 1.2rem; font-weight: 600; color: #aaa; }
+  .test-header .progress { font-size: 0.85rem; color: #666; margin-top: 0.3rem; }
+  .instruction { text-align: center; max-width: 500px; padding: 0 1.5rem; }
+  .instruction h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+  .instruction p { color: #aaa; line-height: 1.7; margin-bottom: 0.5rem; }
+
+  /* PVT */
+  #pvt-area { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
+  #pvt-area.waiting { background: #111; }
+  #pvt-area.stimulus { background: #b71c1c; }
+  #pvt-area.result { background: #1a1a2e; }
+  #pvt-area .big-text { font-size: 4rem; font-weight: 800; }
+  #pvt-area .sub-text { font-size: 1.1rem; color: rgba(255,255,255,0.7); margin-top: 0.5rem; }
+  .too-early { color: #ff9800; }
+
+  /* Go/No-Go */
+  #gng-area { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
+  .gng-circle { width: 180px; height: 180px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; transition: transform 0.1s; }
+  .gng-circle.go { background: #2e7d32; color: #fff; }
+  .gng-circle.nogo { background: #c62828; color: #fff; }
+  .gng-circle.neutral { background: #333; border: 3px dashed #555; color: #666; }
+  .gng-feedback { position: absolute; bottom: 15%; font-size: 1.2rem; font-weight: 600; }
+
+  /* Trail Making */
+  #trail-canvas-container { position: relative; width: 100vw; height: 100vh; }
+  #trail-canvas { position: absolute; top: 0; left: 0; }
+  .trail-node { position: absolute; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: all 0.15s; border: 3px solid; user-select: none; z-index: 2; }
+  .trail-node.number { background: rgba(33,150,243,0.15); border-color: #2196f3; color: #2196f3; }
+  .trail-node.letter { background: rgba(255,152,0,0.15); border-color: #ff9800; color: #ff9800; }
+  .trail-node.done { background: rgba(76,175,80,0.2); border-color: #4caf50; color: #4caf50; opacity: 0.5; }
+  .trail-node.next { transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
+  .trail-node.wrong { animation: shake 0.3s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  #trail-timer { position: absolute; top: 1.5rem; right: 2rem; font-size: 1.5rem; font-weight: 700; color: #4fc3f7; z-index: 3; }
+  #trail-errors { position: absolute; top: 1.5rem; left: 2rem; font-size: 0.9rem; color: #f44336; z-index: 3; }
+
+  /* Results */
+  #results { background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%); }
+  .results-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 2rem; width: 380px; }
+  .results-card h2 { font-size: 1.5rem; text-align: center; margin-bottom: 0.3rem; }
+  .results-card .total-score { text-align: center; font-size: 4rem; font-weight: 800; margin: 1rem 0; }
+  .score-good { color: #4caf50; }
+  .score-warn { color: #ff9800; }
+  .score-danger { color: #f44336; }
+  .result-row { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .result-row:last-child { border: none; }
+  .result-label { color: #888; }
+  .result-value { font-weight: 600; }
+  .risk-bar { width: 100%; height: 8px; background: #222; border-radius: 4px; margin: 1rem 0; overflow: hidden; }
+  .risk-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <h1>콘엑스 세이프</h1>
+  <div class="subtitle">건설 현장 인지 안전 테스트</div>
+  <div class="test-list">
+    <div class="test-item">
+      <div><div class="name">1. 반응속도 (PVT)</div><div class="meta">경계/각성 수준 · 약 1분</div></div>
+      <div class="check" id="check-pvt"></div>
+    </div>
+    <div class="test-item">
+      <div><div class="name">2. Go / No-Go</div><div class="meta">충동 억제력 · 약 1분</div></div>
+      <div class="check" id="check-gng"></div>
+    </div>
+    <div class="test-item">
+      <div><div class="name">3. Trail Making</div><div class="meta">주의력 전환 · 약 1분</div></div>
+      <div class="check" id="check-trail"></div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="startAll()">테스트 시작</button>
+</div>
+
+<!-- PVT INSTRUCTION -->
+<div id="pvt-intro" class="screen">
+  <div class="instruction">
+    <h2>반응속도 테스트</h2>
+    <p>화면이 <span style="color:#ef5350;font-weight:700">빨간색</span>으로 변하면<br>최대한 빨리 화면을 클릭하세요.</p>
+    <p style="color:#666;font-size:0.9rem;">빨간색이 나타나기 전에 누르면 실패입니다.</p>
+    <p style="color:#666;font-size:0.9rem;">총 5회 측정합니다.</p>
+    <button class="btn btn-primary" onclick="startPVT()">시작</button>
+  </div>
+</div>
+
+<!-- PVT TEST -->
+<div id="pvt-test" class="screen">
+  <div class="test-header"><h2>반응속도 (PVT)</h2><div class="progress" id="pvt-progress">1 / 5</div></div>
+  <div id="pvt-area" class="waiting" onmousedown="pvtClick()" ontouchstart="pvtClick()">
+    <div style="text-align:center">
+      <div class="big-text" id="pvt-display">기다리세요...</div>
+      <div class="sub-text" id="pvt-sub"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GNG INSTRUCTION -->
+<div id="gng-intro" class="screen">
+  <div class="instruction">
+    <h2>Go / No-Go 테스트</h2>
+    <p><span style="color:#4caf50;font-weight:700">초록색 원</span>이 나오면 빠르게 클릭!</p>
+    <p><span style="color:#f44336;font-weight:700">빨간색 원</span>이 나오면 클릭하지 마세요.</p>
+    <p style="color:#666;font-size:0.9rem;">총 20회 진행됩니다.</p>
+    <button class="btn btn-primary" onclick="startGNG()">시작</button>
+  </div>
+</div>
+
+<!-- GNG TEST -->
+<div id="gng-test" class="screen">
+  <div class="test-header"><h2>Go / No-Go</h2><div class="progress" id="gng-progress">1 / 20</div></div>
+  <div id="gng-area" onclick="gngClick()">
+    <div class="gng-circle neutral" id="gng-circle">준비</div>
+    <div class="gng-feedback" id="gng-feedback"></div>
+  </div>
+</div>
+
+<!-- TRAIL INSTRUCTION -->
+<div id="trail-intro" class="screen">
+  <div class="instruction">
+    <h2>Trail Making 테스트</h2>
+    <p><span style="color:#2196f3;font-weight:700">숫자</span>와 <span style="color:#ff9800;font-weight:700">글자</span>를 번갈아 순서대로 클릭하세요.</p>
+    <p style="font-size:1.1rem;color:#ccc;font-weight:600;">1 → A → 2 → B → 3 → C ...</p>
+    <p style="color:#666;font-size:0.9rem;">최대한 빠르고 정확하게!</p>
+    <button class="btn btn-primary" onclick="startTrail()">시작</button>
+  </div>
+</div>
+
+<!-- TRAIL TEST -->
+<div id="trail-test" class="screen">
+  <div class="test-header"><h2>Trail Making</h2></div>
+  <div id="trail-canvas-container">
+    <canvas id="trail-canvas"></canvas>
+    <div id="trail-timer">0.0s</div>
+    <div id="trail-errors"></div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="screen">
+  <div class="results-card">
+    <h2>인지 안전 점수</h2>
+    <div class="total-score" id="total-score">--</div>
+    <div class="risk-bar"><div class="risk-fill" id="risk-fill" style="width:0%"></div></div>
+    <div id="risk-label" style="text-align:center;font-size:0.9rem;margin-bottom:1.5rem;"></div>
+
+    <div class="result-row"><span class="result-label">반응속도 평균</span><span class="result-value" id="r-pvt">--</span></div>
+    <div class="result-row"><span class="result-label">반응속도 Lapse (500ms+)</span><span class="result-value" id="r-pvt-lapse">--</span></div>
+    <div class="result-row"><span class="result-label">Go/No-Go 정확도</span><span class="result-value" id="r-gng-acc">--</span></div>
+    <div class="result-row"><span class="result-label">Go/No-Go 오클릭</span><span class="result-value" id="r-gng-false">--</span></div>
+    <div class="result-row"><span class="result-label">Trail Making 시간</span><span class="result-value" id="r-trail-time">--</span></div>
+    <div class="result-row"><span class="result-label">Trail Making 오류</span><span class="result-value" id="r-trail-err">--</span></div>
+
+    <button class="btn btn-primary" style="width:100%;margin-top:1.5rem;" onclick="location.reload()">다시 테스트</button>
+  </div>
+</div>
+
+<script>
+// ── State ──
+const results = { pvt: [], gng: { goRT: [], falseAlarms: 0, misses: 0, total: 0, goCount: 0, nogoCount: 0 }, trail: { time: 0, errors: 0 } };
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startAll() { showScreen('pvt-intro'); }
+
+// ── PVT ──
+let pvtState = 'idle'; // idle, waiting, stimulus, done
+let pvtTimer = null;
+let pvtStimTime = 0;
+let pvtRound = 0;
+const PVT_ROUNDS = 5;
+
+function startPVT() {
+  pvtRound = 0;
+  results.pvt = [];
+  showScreen('pvt-test');
+  nextPVT();
+}
+
+function nextPVT() {
+  if (pvtRound >= PVT_ROUNDS) { finishPVT(); return; }
+  const area = document.getElementById('pvt-area');
+  const display = document.getElementById('pvt-display');
+  const sub = document.getElementById('pvt-sub');
+  document.getElementById('pvt-progress').textContent = `${pvtRound + 1} / ${PVT_ROUNDS}`;
+
+  area.className = 'waiting';
+  display.textContent = '기다리세요...';
+  display.className = 'big-text';
+  sub.textContent = '';
+  pvtState = 'waiting';
+
+  const delay = 2000 + Math.random() * 5000;
+  pvtTimer = setTimeout(() => {
+    area.className = 'stimulus';
+    display.textContent = '클릭!';
+    // RAF ensures we measure from when the user actually SEES the change
+    requestAnimationFrame(() => {
+      pvtStimTime = performance.now();
+    });
+    pvtState = 'stimulus';
+  }, delay);
+}
+
+function pvtClick() {
+  if (pvtState === 'waiting') {
+    clearTimeout(pvtTimer);
+    const display = document.getElementById('pvt-display');
+    const sub = document.getElementById('pvt-sub');
+    const area = document.getElementById('pvt-area');
+    area.className = 'result';
+    display.textContent = '너무 빨라요!';
+    display.className = 'big-text too-early';
+    sub.textContent = '빨간 화면이 나온 후 클릭하세요';
+    pvtState = 'idle';
+    setTimeout(nextPVT, 1500);
+  } else if (pvtState === 'stimulus') {
+    const rt = Math.round(performance.now() - pvtStimTime);
+    results.pvt.push(rt);
+    pvtRound++;
+    const display = document.getElementById('pvt-display');
+    const sub = document.getElementById('pvt-sub');
+    const area = document.getElementById('pvt-area');
+    area.className = 'result';
+    display.textContent = `${rt}ms`;
+    display.className = 'big-text';
+    sub.textContent = rt < 300 ? '좋습니다!' : rt < 500 ? '보통' : '느림 (피로 의심)';
+    pvtState = 'idle';
+    setTimeout(nextPVT, 1200);
+  }
+}
+
+function finishPVT() {
+  document.getElementById('check-pvt').textContent = '✓';
+  document.getElementById('check-pvt').classList.add('done');
+  showScreen('gng-intro');
+}
+
+// ── Go/No-Go ──
+const GNG_TOTAL = 20;
+const GNG_GO_RATIO = 0.7;
+let gngTrials = [];
+let gngIdx = 0;
+let gngState = 'idle';
+let gngStimTime = 0;
+let gngTimer = null;
+let gngClicked = false;
+
+function startGNG() {
+  gngTrials = [];
+  for (let i = 0; i < GNG_TOTAL; i++) gngTrials.push(Math.random() < GNG_GO_RATIO ? 'go' : 'nogo');
+  // Ensure at least 4 nogo
+  let nogoCount = gngTrials.filter(t => t === 'nogo').length;
+  while (nogoCount < 4) { gngTrials[Math.floor(Math.random() * GNG_TOTAL)] = 'nogo'; nogoCount = gngTrials.filter(t => t === 'nogo').length; }
+  results.gng = { goRT: [], falseAlarms: 0, misses: 0, total: GNG_TOTAL, goCount: gngTrials.filter(t=>t==='go').length, nogoCount: gngTrials.filter(t=>t==='nogo').length };
+  gngIdx = 0;
+  showScreen('gng-test');
+  setTimeout(nextGNG, 800);
+}
+
+function nextGNG() {
+  if (gngIdx >= GNG_TOTAL) { finishGNG(); return; }
+  document.getElementById('gng-progress').textContent = `${gngIdx + 1} / ${GNG_TOTAL}`;
+  const circle = document.getElementById('gng-circle');
+  const feedback = document.getElementById('gng-feedback');
+  feedback.textContent = '';
+
+  // Brief blank
+  circle.className = 'gng-circle neutral';
+  circle.textContent = '';
+  gngState = 'blank';
+  gngClicked = false;
+
+  setTimeout(() => {
+    const trial = gngTrials[gngIdx];
+    circle.className = trial === 'go' ? 'gng-circle go' : 'gng-circle nogo';
+    circle.textContent = trial === 'go' ? 'GO' : 'X';
+    gngState = trial;
+    gngStimTime = performance.now();
+    gngClicked = false;
+
+    gngTimer = setTimeout(() => {
+      if (!gngClicked) {
+        if (gngState === 'go') {
+          results.gng.misses++;
+          feedback.textContent = '놓침!';
+          feedback.style.color = '#f44336';
+        } else {
+          feedback.textContent = '정확!';
+          feedback.style.color = '#4caf50';
+        }
+        gngIdx++;
+        setTimeout(nextGNG, 600);
+      }
+    }, 1000);
+  }, 400);
+}
+
+function gngClick() {
+  if (gngState === 'blank' || gngClicked) return;
+  gngClicked = true;
+  clearTimeout(gngTimer);
+  const feedback = document.getElementById('gng-feedback');
+
+  if (gngState === 'go') {
+    const rt = Math.round(performance.now() - gngStimTime);
+    results.gng.goRT.push(rt);
+    feedback.textContent = `${rt}ms`;
+    feedback.style.color = '#4caf50';
+  } else {
+    results.gng.falseAlarms++;
+    feedback.textContent = '오클릭! (빨간색은 누르면 안 돼요)';
+    feedback.style.color = '#f44336';
+  }
+  gngIdx++;
+  setTimeout(nextGNG, 600);
+}
+
+function finishGNG() {
+  document.getElementById('check-gng').textContent = '✓';
+  document.getElementById('check-gng').classList.add('done');
+  showScreen('trail-intro');
+}
+
+// ── Trail Making (Part B: 1-A-2-B-3-C...) ──
+const TRAIL_NUMBERS = 8;
+const TRAIL_LETTERS = ['A','B','C','D','E','F','G','H'];
+let trailSequence = [];
+let trailIdx = 0;
+let trailStart = 0;
+let trailTimerInterval = null;
+let trailNodes = [];
+
+function startTrail() {
+  showScreen('trail-test');
+  results.trail = { time: 0, errors: 0 };
+  trailIdx = 0;
+
+  // Build sequence: 1, A, 2, B, 3, C ...
+  trailSequence = [];
+  for (let i = 0; i < TRAIL_NUMBERS; i++) {
+    trailSequence.push({ label: String(i + 1), type: 'number' });
+    trailSequence.push({ label: TRAIL_LETTERS[i], type: 'letter' });
+  }
+
+  const container = document.getElementById('trail-canvas-container');
+  // Remove old nodes
+  container.querySelectorAll('.trail-node').forEach(n => n.remove());
+
+  const canvas = document.getElementById('trail-canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Place nodes randomly (no overlap)
+  const padding = 60;
+  const nodeSize = 48;
+  trailNodes = [];
+  const positions = [];
+
+  for (let i = 0; i < trailSequence.length; i++) {
+    let x, y, overlap;
+    let attempts = 0;
+    do {
+      x = padding + Math.random() * (canvas.width - padding * 2 - nodeSize);
+      y = padding + 50 + Math.random() * (canvas.height - padding * 2 - nodeSize - 50);
+      overlap = positions.some(p => Math.hypot(p.x - x, p.y - y) < nodeSize * 1.8);
+      attempts++;
+    } while (overlap && attempts < 200);
+    positions.push({ x, y });
+
+    const node = document.createElement('div');
+    node.className = `trail-node ${trailSequence[i].type}`;
+    node.textContent = trailSequence[i].label;
+    node.style.left = x + 'px';
+    node.style.top = y + 'px';
+    node.dataset.idx = i;
+    node.addEventListener('click', () => trailClick(i, node));
+    container.appendChild(node);
+    trailNodes.push({ el: node, x: x + nodeSize / 2, y: y + nodeSize / 2 });
+  }
+
+  // Highlight first
+  trailNodes[0].el.classList.add('next');
+  document.getElementById('trail-errors').textContent = '';
+
+  trailStart = performance.now();
+  trailTimerInterval = setInterval(() => {
+    const elapsed = ((performance.now() - trailStart) / 1000).toFixed(1);
+    document.getElementById('trail-timer').textContent = elapsed + 's';
+  }, 100);
+}
+
+function trailClick(idx, node) {
+  if (idx === trailIdx) {
+    node.classList.remove('next');
+    node.classList.add('done');
+
+    // Draw line
+    if (trailIdx > 0) {
+      const canvas = document.getElementById('trail-canvas');
+      const ctx = canvas.getContext('2d');
+      const prev = trailNodes[trailIdx - 1];
+      const curr = trailNodes[trailIdx];
+      ctx.beginPath();
+      ctx.moveTo(prev.x, prev.y);
+      ctx.lineTo(curr.x, curr.y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    trailIdx++;
+    if (trailIdx < trailSequence.length) {
+      trailNodes[trailIdx].el.classList.add('next');
+    } else {
+      finishTrail();
+    }
+  } else {
+    results.trail.errors++;
+    node.classList.add('wrong');
+    setTimeout(() => node.classList.remove('wrong'), 300);
+    document.getElementById('trail-errors').textContent = `오류: ${results.trail.errors}`;
+  }
+}
+
+function finishTrail() {
+  clearInterval(trailTimerInterval);
+  results.trail.time = ((performance.now() - trailStart) / 1000).toFixed(1);
+  document.getElementById('check-trail').textContent = '✓';
+  document.getElementById('check-trail').classList.add('done');
+  setTimeout(showResults, 500);
+}
+
+// ── Results ──
+function showResults() {
+  showScreen('results');
+
+  // PVT
+  const pvtAvg = results.pvt.length > 0 ? Math.round(results.pvt.reduce((a, b) => a + b, 0) / results.pvt.length) : 0;
+  const pvtLapses = results.pvt.filter(r => r >= 500).length;
+  document.getElementById('r-pvt').textContent = pvtAvg + 'ms';
+  document.getElementById('r-pvt-lapse').textContent = pvtLapses + '회';
+
+  // GNG
+  const gngAcc = results.gng.total > 0 ? Math.round(((results.gng.goRT.length + (results.gng.nogoCount - results.gng.falseAlarms)) / results.gng.total) * 100) : 0;
+  document.getElementById('r-gng-acc').textContent = gngAcc + '%';
+  document.getElementById('r-gng-false').textContent = results.gng.falseAlarms + '회';
+
+  // Trail
+  document.getElementById('r-trail-time').textContent = results.trail.time + '초';
+  document.getElementById('r-trail-err').textContent = results.trail.errors + '회';
+
+  // Composite score (0-100, higher = safer)
+  // Web-based norms: PVT 280-400ms normal, Trail 20-40s normal
+  let pvtScore = Math.max(0, Math.min(100, 100 - Math.max(0, pvtAvg - 350) * 0.4));
+  let lapseScore = Math.max(0, 100 - pvtLapses * 25);
+  let gngScore = gngAcc;
+  let trailTimeScore = Math.max(0, Math.min(100, 100 - Math.max(0, parseFloat(results.trail.time) - 30) * 2.5));
+  let trailErrScore = Math.max(0, 100 - results.trail.errors * 15);
+
+  const total = Math.round((pvtScore * 0.25 + lapseScore * 0.15 + gngScore * 0.25 + trailTimeScore * 0.2 + trailErrScore * 0.15));
+  const clamped = Math.max(0, Math.min(100, total));
+
+  const scoreEl = document.getElementById('total-score');
+  const riskFill = document.getElementById('risk-fill');
+  const riskLabel = document.getElementById('risk-label');
+
+  scoreEl.textContent = clamped;
+  riskFill.style.width = clamped + '%';
+
+  if (clamped >= 80) {
+    scoreEl.className = 'total-score score-good';
+    riskFill.style.background = 'linear-gradient(90deg, #4caf50, #66bb6a)';
+    riskLabel.textContent = '정상 — 작업 가능';
+    riskLabel.style.color = '#4caf50';
+  } else if (clamped >= 60) {
+    scoreEl.className = 'total-score score-warn';
+    riskFill.style.background = 'linear-gradient(90deg, #ff9800, #ffb74d)';
+    riskLabel.textContent = '주의 — 고위험 작업 자제 권고';
+    riskLabel.style.color = '#ff9800';
+  } else {
+    scoreEl.className = 'total-score score-danger';
+    riskFill.style.background = 'linear-gradient(90deg, #f44336, #ef5350)';
+    riskLabel.textContent = '위험 — 작업 재배치 필요';
+    riskLabel.style.color = '#f44336';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>콘엑스 세이프 - 건설 현장 인지 안전 관리 시스템</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #000; color: #fff; overflow: hidden; }
+
+  /* Slide system */
+  .slide { width: 100vw; height: 100vh; display: none; flex-direction: column; justify-content: center; padding: 6vh 8vw; position: relative; overflow: hidden; }
+  .slide.active { display: flex; }
+  .slide-number { position: absolute; bottom: 2rem; right: 3rem; font-size: 0.8rem; color: rgba(255,255,255,0.3); }
+
+  /* Navigation */
+  .nav-hint { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: rgba(255,255,255,0.2); z-index: 100; pointer-events: none; }
+
+  /* Common */
+  h1 { font-size: 3.2rem; font-weight: 900; line-height: 1.25; margin-bottom: 1.5rem; }
+  h2 { font-size: 2.4rem; font-weight: 700; line-height: 1.3; margin-bottom: 1.2rem; }
+  h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.8rem; }
+  p { font-size: 1.15rem; line-height: 1.7; color: rgba(255,255,255,0.8); }
+  .accent { color: #4fc3f7; }
+  .warn { color: #ff9800; }
+  .danger { color: #f44336; }
+  .green { color: #4caf50; }
+  .dim { color: rgba(255,255,255,0.45); }
+  .big-number { font-size: 4.5rem; font-weight: 900; line-height: 1; }
+  .medium-number { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+  .label { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-top: 0.3rem; letter-spacing: 0.05em; }
+  .tag { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-right: 0.4rem; margin-bottom: 0.4rem; }
+  .tag-blue { background: rgba(79,195,247,0.15); color: #4fc3f7; border: 1px solid rgba(79,195,247,0.3); }
+  .tag-orange { background: rgba(255,152,0,0.15); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); }
+  .tag-green { background: rgba(76,175,80,0.15); color: #4caf50; border: 1px solid rgba(76,175,80,0.3); }
+
+  /* Layouts */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; }
+  .four-col { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1.5rem; }
+  .stat-card { text-align: center; padding: 2rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; }
+  .flow-card { padding: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
+  .flow-card h3 { font-size: 1.1rem; }
+  .flow-card p { font-size: 0.95rem; }
+  .step-num { font-size: 0.75rem; font-weight: 700; color: #4fc3f7; margin-bottom: 0.5rem; letter-spacing: 0.1em; }
+
+  /* Specific slides */
+  .cover-bg { background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 50%, #1a1a3a 100%); }
+  .cover-bg::before { content: ''; position: absolute; top: -50%; right: -20%; width: 80vh; height: 80vh; border-radius: 50%; background: radial-gradient(circle, rgba(79,195,247,0.08) 0%, transparent 70%); }
+
+  .problem-bg { background: linear-gradient(135deg, #1a0a0a 0%, #2a0d0d 100%); }
+  .solution-bg { background: linear-gradient(135deg, #0a1a0a 0%, #0d2a1a 100%); }
+  .dark-bg { background: #0a0a12; }
+  .navy-bg { background: linear-gradient(135deg, #0a0f1a 0%, #0d1b2e 100%); }
+  .deep-bg { background: linear-gradient(135deg, #0a0a18 0%, #12122a 100%); }
+
+  .divider { width: 60px; height: 3px; background: #4fc3f7; margin: 1rem 0 1.5rem; border-radius: 2px; }
+
+  /* Quote */
+  .quote { font-size: 1.5rem; font-weight: 500; font-style: italic; line-height: 1.6; color: rgba(255,255,255,0.9); border-left: 3px solid #4fc3f7; padding-left: 1.5rem; margin: 1.5rem 0; }
+  .quote-src { font-size: 0.85rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-style: normal; }
+
+  /* Table */
+  .clean-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  .clean-table th { text-align: left; padding: 0.7rem 1rem; font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .clean-table td { padding: 0.8rem 1rem; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .clean-table tr:last-child td { border: none; }
+
+  /* Process flow */
+  .process { display: flex; align-items: center; gap: 0.5rem; margin: 1.5rem 0; flex-wrap: wrap; }
+  .process-step { padding: 0.7rem 1.2rem; background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.2); border-radius: 8px; font-size: 0.95rem; font-weight: 500; }
+  .process-arrow { color: rgba(255,255,255,0.2); font-size: 1.2rem; }
+  .process-step.highlight { background: rgba(79,195,247,0.2); border-color: #4fc3f7; color: #4fc3f7; font-weight: 700; }
+
+  /* Bar chart */
+  .bar-row { display: flex; align-items: center; margin-bottom: 0.8rem; }
+  .bar-label { width: 140px; font-size: 0.9rem; color: rgba(255,255,255,0.6); }
+  .bar-track { flex: 1; height: 28px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 0.8rem; font-size: 0.8rem; font-weight: 700; }
+  .bar-fill.blue { background: linear-gradient(90deg, #1565c0, #4fc3f7); }
+  .bar-fill.red { background: linear-gradient(90deg, #c62828, #ef5350); }
+  .bar-fill.green { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
+  .bar-fill.orange { background: linear-gradient(90deg, #e65100, #ff9800); }
+
+  /* Pricing */
+  .price-card { padding: 2rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; text-align: center; }
+  .price-card.featured { border-color: #4fc3f7; background: rgba(79,195,247,0.05); }
+  .price-card .price { font-size: 2.2rem; font-weight: 900; margin: 1rem 0 0.3rem; }
+  .price-card .period { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
+  .price-card ul { list-style: none; text-align: left; margin-top: 1.2rem; }
+  .price-card li { padding: 0.4rem 0; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
+  .price-card li::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4fc3f7; margin-right: 0.6rem; vertical-align: middle; }
+
+  /* Timeline */
+  .timeline { display: flex; gap: 0; margin: 1.5rem 0; }
+  .timeline-item { flex: 1; padding: 1.2rem; border-top: 3px solid rgba(255,255,255,0.1); position: relative; }
+  .timeline-item.active { border-color: #4fc3f7; }
+  .timeline-item .week { font-size: 0.75rem; font-weight: 700; color: #4fc3f7; margin-bottom: 0.5rem; }
+  .timeline-item h3 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+  .timeline-item p { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+
+  @media print {
+    .slide { page-break-after: always; display: flex !important; height: 100vh; }
+    .nav-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER -->
+<div class="slide cover-bg active" data-slide="1">
+  <div>
+    <div class="label" style="margin-bottom:1rem;">CONSTRUCTION SAFETY INTELLIGENCE</div>
+    <h1>콘엑스 <span class="accent">세이프</span></h1>
+    <p style="font-size:1.5rem;color:rgba(255,255,255,0.6);font-weight:300;max-width:600px;">
+      건설 현장 근로자의 인지 상태를 측정하여<br>사고를 예방하는 안전 관리 시스템
+    </p>
+    <div style="margin-top:3rem;">
+      <span class="tag tag-blue">60초 인지 테스트</span>
+      <span class="tag tag-blue">개인 베이스라인 AI</span>
+      <span class="tag tag-blue">실시간 위험 알림</span>
+    </div>
+    <p style="margin-top:3rem;font-size:0.9rem;color:rgba(255,255,255,0.3);">2026. 03</p>
+  </div>
+  <div class="slide-number">1 / 14</div>
+</div>
+
+<!-- SLIDE 2: PROBLEM - NUMBERS -->
+<div class="slide problem-bg" data-slide="2">
+  <div>
+    <div class="label">PROBLEM</div>
+    <h2>건설업은 대한민국 <span class="danger">산재 사망 1위</span> 산업입니다</h2>
+    <div class="divider" style="background:#f44336;"></div>
+    <div class="three-col" style="margin-top:2rem;">
+      <div class="stat-card">
+        <div class="big-number danger">401</div>
+        <div class="label">2024년 건설업 사망자 수 (명)</div>
+      </div>
+      <div class="stat-card">
+        <div class="big-number warn">65%</div>
+        <div class="label">피로/부주의가 원인인 사고 비율</div>
+      </div>
+      <div class="stat-card">
+        <div class="big-number accent">0</div>
+        <div class="label">근로자 인지 상태를 측정하는<br>한국 솔루션 수</div>
+      </div>
+    </div>
+    <p style="margin-top:2rem;font-size:1rem;">
+      기존 안전 솔루션은 <strong>환경</strong>(CCTV, 센서, 드론)을 감시합니다.<br>
+      하지만 정작 <strong>"이 사람이 지금 일할 수 있는 상태인가"</strong>는 아무도 확인하지 않습니다.
+    </p>
+  </div>
+  <div class="slide-number">2 / 14</div>
+</div>
+
+<!-- SLIDE 3: PROBLEM - GAP -->
+<div class="slide dark-bg" data-slide="3">
+  <div>
+    <div class="label">PROBLEM</div>
+    <h2>현재 안전관리의 <span class="warn">사각지대</span></h2>
+    <div class="divider" style="background:#ff9800;"></div>
+    <div class="two-col" style="margin-top:1.5rem;">
+      <div>
+        <h3 style="color:rgba(255,255,255,0.5);">현재 하고 있는 것</h3>
+        <table class="clean-table">
+          <tr><td>AI CCTV</td><td class="dim">안전모/안전대 착용 여부</td></tr>
+          <tr><td>IoT 센서</td><td class="dim">중장비 충돌 방지</td></tr>
+          <tr><td>드론</td><td class="dim">현장 3D 스캔</td></tr>
+          <tr><td>TBM</td><td class="dim">구두 안전 교육</td></tr>
+        </table>
+        <p style="margin-top:1rem;font-size:0.95rem;">모두 <strong>환경과 장비</strong>를 봅니다</p>
+      </div>
+      <div>
+        <h3 style="color:#f44336;">아무도 안 하고 있는 것</h3>
+        <table class="clean-table">
+          <tr><td class="warn" style="font-weight:700;">근로자가 어젯밤 잘 잤는지</td></tr>
+          <tr><td class="warn" style="font-weight:700;">지금 집중할 수 있는 상태인지</td></tr>
+          <tr><td class="warn" style="font-weight:700;">충동적 행동을 억제할 수 있는지</td></tr>
+          <tr><td class="warn" style="font-weight:700;">오늘 고위험 작업에 투입해도 되는지</td></tr>
+        </table>
+        <p style="margin-top:1rem;font-size:0.95rem;"><strong>사람의 상태</strong>는 보지 않습니다</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">3 / 14</div>
+</div>
+
+<!-- SLIDE 4: SOLUTION INTRO -->
+<div class="slide solution-bg" data-slide="4">
+  <div>
+    <div class="label">SOLUTION</div>
+    <h1>매일 아침 <span class="accent">60초</span>로<br>사고를 예방합니다</h1>
+    <div class="divider"></div>
+    <p style="font-size:1.2rem;max-width:650px;">
+      콘엑스 세이프는 과학적으로 검증된 인지 테스트를 통해<br>
+      근로자의 <strong>경계 수준, 충동 억제력, 주의력</strong>을 매일 측정하고<br>
+      개인 베이스라인 대비 이상을 감지합니다.
+    </p>
+    <div class="process" style="margin-top:2.5rem;">
+      <div class="process-step">QR 스캔</div>
+      <div class="process-arrow">&rarr;</div>
+      <div class="process-step highlight">60초 인지 테스트</div>
+      <div class="process-arrow">&rarr;</div>
+      <div class="process-step">AI 판정</div>
+      <div class="process-arrow">&rarr;</div>
+      <div class="process-step">정상: 작업 투입</div>
+    </div>
+    <div class="process">
+      <div style="width:calc(140px + 1.5rem + 0.5rem);"></div>
+      <div class="process-arrow" style="visibility:hidden;">&rarr;</div>
+      <div class="process-arrow" style="visibility:hidden;">&rarr;</div>
+      <div class="process-arrow">&darr;</div>
+    </div>
+    <div class="process" style="margin-top:-0.5rem;">
+      <div style="width:calc(140px + 1.5rem + 0.5rem);"></div>
+      <div class="process-arrow" style="visibility:hidden;">&rarr;</div>
+      <div class="process-arrow" style="visibility:hidden;">&rarr;</div>
+      <div class="process-step" style="background:rgba(244,67,54,0.15);border-color:rgba(244,67,54,0.3);color:#f44336;">위험: 관리자 알림 + 작업 재배치</div>
+    </div>
+  </div>
+  <div class="slide-number">4 / 14</div>
+</div>
+
+<!-- SLIDE 5: HOW IT WORKS -->
+<div class="slide navy-bg" data-slide="5">
+  <div>
+    <div class="label">HOW IT WORKS</div>
+    <h2>3가지 과학적 인지 테스트</h2>
+    <div class="divider"></div>
+    <div class="three-col" style="margin-top:1.5rem;">
+      <div class="flow-card">
+        <div class="step-num">TEST 01 &mdash; 20초</div>
+        <h3>반응속도 (PVT)</h3>
+        <p>화면 자극에 대한 반응 시간을 측정합니다. NASA, 미군에서 수십 년간 사용된 표준 경계 수준 검사법입니다.</p>
+        <div style="margin-top:1rem;">
+          <span class="tag tag-blue">경계 수준</span>
+          <span class="tag tag-blue">각성도</span>
+        </div>
+      </div>
+      <div class="flow-card">
+        <div class="step-num">TEST 02 &mdash; 20초</div>
+        <h3>Go / No-Go</h3>
+        <p>초록 신호에는 반응하고, 빨간 신호에는 참아야 합니다. 위험 상황에서의 순간 판단력과 충동 억제 능력을 평가합니다.</p>
+        <div style="margin-top:1rem;">
+          <span class="tag tag-orange">충동 억제</span>
+          <span class="tag tag-orange">판단력</span>
+        </div>
+      </div>
+      <div class="flow-card">
+        <div class="step-num">TEST 03 &mdash; 20초</div>
+        <h3>Trail Making</h3>
+        <p>숫자와 글자를 번갈아 순서대로 연결합니다. 복잡한 작업 지시를 이해하고 수행하는 주의력 전환 능력을 측정합니다.</p>
+        <div style="margin-top:1rem;">
+          <span class="tag tag-green">주의력 전환</span>
+          <span class="tag tag-green">인지 유연성</span>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:1.5rem;font-size:0.95rem;">
+      3가지 테스트를 조합하여 <strong class="accent">종합 인지 안전 점수</strong>를 산출합니다.<br>
+      개인별 최초 5회 테스트로 베이스라인을 설정하고, 이후 매일 <strong>본인 대비 변화</strong>를 감지합니다.
+    </p>
+  </div>
+  <div class="slide-number">5 / 14</div>
+</div>
+
+<!-- SLIDE 6: BASELINE -->
+<div class="slide deep-bg" data-slide="6">
+  <div>
+    <div class="label">CORE TECHNOLOGY</div>
+    <h2>개인 베이스라인 <span class="accent">AI 엔진</span></h2>
+    <div class="divider"></div>
+    <div class="two-col">
+      <div>
+        <p style="margin-bottom:1.5rem;">
+          절대 기준이 아닌 <strong>개인 대비 상대 평가</strong>입니다.<br>
+          반응이 원래 느린 사람이 불이익을 받지 않습니다.
+        </p>
+        <div class="flow-card" style="margin-bottom:1rem;">
+          <h3 class="accent">베이스라인 설정</h3>
+          <p>최초 5회 테스트 결과로 개인별 평균과 표준편차를 산출. 이것이 그 사람의 "정상 상태" 기준이 됩니다.</p>
+        </div>
+        <div class="flow-card" style="margin-bottom:1rem;">
+          <h3 class="warn">이상 감지</h3>
+          <p>오늘 점수가 베이스라인 대비 2 표준편차 이상 벗어나면 "주의" 또는 "위험"으로 판정합니다.</p>
+        </div>
+        <div class="flow-card">
+          <h3 class="green">자동 보정</h3>
+          <p>시간이 지나면 학습 효과로 점수가 올라갑니다. 베이스라인도 자동으로 상향 조정되어 정확도를 유지합니다.</p>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:2rem;">
+          <p style="font-size:0.85rem;color:rgba(255,255,255,0.4);margin-bottom:1rem;">예시: 근로자 김OO의 30일 반응속도 추세</p>
+          <div style="position:relative;height:200px;border-left:1px solid rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.1);margin:0 1rem;">
+            <!-- Baseline zone -->
+            <div style="position:absolute;top:30%;left:0;right:0;height:30%;background:rgba(79,195,247,0.05);border-top:1px dashed rgba(79,195,247,0.3);border-bottom:1px dashed rgba(79,195,247,0.3);"></div>
+            <div style="position:absolute;top:28%;left:5px;font-size:0.65rem;color:#4fc3f7;">베이스라인 범위</div>
+            <!-- Normal dots -->
+            <div style="position:absolute;bottom:55%;left:5%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:52%;left:12%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:58%;left:19%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:50%;left:26%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:53%;left:33%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:56%;left:40%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:48%;left:47%;width:6px;height:6px;border-radius:50%;background:#ff9800;"></div>
+            <div style="position:absolute;bottom:54%;left:54%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:51%;left:61%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <!-- Danger point -->
+            <div style="position:absolute;bottom:22%;left:68%;width:10px;height:10px;border-radius:50%;background:#f44336;box-shadow:0 0 10px rgba(244,67,54,0.5);"></div>
+            <div style="position:absolute;bottom:15%;left:63%;font-size:0.65rem;color:#f44336;font-weight:700;">28일: 위험 판정</div>
+            <div style="position:absolute;bottom:52%;left:75%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:57%;left:82%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+            <div style="position:absolute;bottom:54%;left:89%;width:6px;height:6px;border-radius:50%;background:#4caf50;"></div>
+          </div>
+          <div style="display:flex;justify-content:center;gap:1.5rem;margin-top:1rem;">
+            <span style="font-size:0.75rem;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;vertical-align:middle;margin-right:4px;"></span> 정상</span>
+            <span style="font-size:0.75rem;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff9800;vertical-align:middle;margin-right:4px;"></span> 주의</span>
+            <span style="font-size:0.75rem;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f44336;vertical-align:middle;margin-right:4px;"></span> 위험</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">6 / 14</div>
+</div>
+
+<!-- SLIDE 7: GLOBAL VALIDATION -->
+<div class="slide dark-bg" data-slide="7">
+  <div>
+    <div class="label">GLOBAL VALIDATION</div>
+    <h2>이미 해외에서 <span class="accent">검증된 방법</span>입니다</h2>
+    <div class="divider"></div>
+    <div class="two-col" style="margin-top:1rem;">
+      <div>
+        <div class="flow-card" style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>AlertMeter (미국)</h3>
+            <span class="tag tag-blue">SaaS</span>
+          </div>
+          <p>60초 인지 테스트 기반 업무적합성 검사. 광산, 건설, 제조업 현장에서 상용화.</p>
+          <div class="three-col" style="gap:0.5rem;margin-top:1rem;">
+            <div style="text-align:center;"><div class="medium-number accent">75M+</div><div class="label">측정 근무시간</div></div>
+            <div style="text-align:center;"><div class="medium-number green">-68%</div><div class="label">사고 심각도</div></div>
+            <div style="text-align:center;"><div class="medium-number green">-70%</div><div class="label">산재보험 비용</div></div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>PHI Air Medical (미국)</h3>
+            <span class="tag tag-orange">항공</span>
+          </div>
+          <p>의료 헬기 파일럿 전원, 매 교대 시작 전 PVT 반응속도 테스트 의무 수행. FAA 권고 기반.</p>
+        </div>
+      </div>
+      <div>
+        <div class="flow-card" style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Caterpillar + Seeing Machines</h3>
+            <span class="tag tag-green">광산</span>
+          </div>
+          <p>광산 트럭 1,500대+에 피로 감지 카메라 설치. 눈 깜빡임/머리 각도로 실시간 졸음 감지.</p>
+        </div>
+        <div class="flow-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>호주 광산업</h3>
+            <span class="tag tag-orange">법규</span>
+          </div>
+          <p>Fit-for-Duty(업무적합성) 검사가 산업 표준으로 정착. 인지/체력 테스트 + 약물 검사 후 작업 투입.</p>
+        </div>
+        <div style="margin-top:1.5rem;">
+          <div class="quote" style="font-size:1.1rem;">
+            한국에는 이 시장에 진입한 제품이 아직 없습니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">7 / 14</div>
+</div>
+
+<!-- SLIDE 8: KOREA MARKET -->
+<div class="slide navy-bg" data-slide="8">
+  <div>
+    <div class="label">MARKET OPPORTUNITY</div>
+    <h2>한국 시장: <span class="accent">규제가 만든 기회</span></h2>
+    <div class="divider"></div>
+    <div class="two-col">
+      <div>
+        <div class="flow-card" style="margin-bottom:1rem;border-color:rgba(244,67,54,0.3);">
+          <h3 class="danger">중대재해처벌법</h3>
+          <p>사망사고 발생 시 경영자에게 <strong>징역형</strong> 부과 가능. 건설사 대표들의 안전 투자 동기가 역사상 가장 강합니다.</p>
+        </div>
+        <div class="flow-card" style="margin-bottom:1rem;border-color:rgba(76,175,80,0.3);">
+          <h3 class="green">산안비 100% 계상 (2026~)</h3>
+          <p>스마트 안전장비 구입/임대 비용을 산업안전보건관리비로 <strong>100% 처리 가능</strong>. 건설사 자체 예산 부담 제로.</p>
+        </div>
+        <div class="flow-card" style="border-color:rgba(255,152,0,0.3);">
+          <h3 class="warn">안전보건관리비 19% 인상</h3>
+          <p>2025년부터 계상 요율이 평균 19% 상향. 안전에 쓸 수 있는 예산이 대폭 증가했습니다.</p>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:1rem;">경쟁 현황</h3>
+        <table class="clean-table">
+          <thead><tr><th>기존 솔루션</th><th>영역</th><th>인지 측정</th></tr></thead>
+          <tbody>
+            <tr><td>카스웍스</td><td>AI CCTV</td><td class="danger">X</td></tr>
+            <tr><td>무스마</td><td>IoT 센서</td><td class="danger">X</td></tr>
+            <tr><td>엔젤스윙</td><td>드론/디지털트윈</td><td class="danger">X</td></tr>
+            <tr><td>세이지</td><td>스마트장비 관리</td><td class="danger">X</td></tr>
+            <tr><td style="font-weight:700;" class="accent">콘엑스 세이프</td><td class="accent">인지 안전</td><td class="green" style="font-weight:700;">O</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-size:0.95rem;">
+          <strong>기존 솔루션과 경쟁이 아닌 보완</strong> 관계.<br>
+          CCTV + IoT + <span class="accent">인지 측정</span> = 완전한 안전관리.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">8 / 14</div>
+</div>
+
+<!-- SLIDE 9: DEPLOYMENT -->
+<div class="slide deep-bg" data-slide="9">
+  <div>
+    <div class="label">DEPLOYMENT</div>
+    <h2>도입이 <span class="accent">간단합니다</span></h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:2rem;">별도 앱 설치, 장비 구매, 네트워크 공사가 필요 없습니다.</p>
+    <div class="four-col">
+      <div class="flow-card" style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#128242;</div>
+        <h3>현장 QR 코드</h3>
+        <p style="font-size:0.85rem;">현장 입구에 QR 하나 부착. 근로자가 스마트폰으로 스캔하면 바로 테스트 시작.</p>
+      </div>
+      <div class="flow-card" style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#127760;</div>
+        <h3>웹 기반 (PWA)</h3>
+        <p style="font-size:0.85rem;">앱 설치 불필요. 브라우저에서 바로 실행. 홈화면 추가하면 앱처럼 동작.</p>
+      </div>
+      <div class="flow-card" style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#9201;</div>
+        <h3>60초 완료</h3>
+        <p style="font-size:0.85rem;">기존 TBM(작업 전 안전점검회의) 시간에 자연스럽게 포함. 추가 시간 부담 최소.</p>
+      </div>
+      <div class="flow-card" style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#128202;</div>
+        <h3>자동 기록</h3>
+        <p style="font-size:0.85rem;">테스트 결과가 자동으로 TBM 일지에 기록. 안전교육 증빙 + 법적 면책 근거.</p>
+      </div>
+    </div>
+    <div style="margin-top:2.5rem;background:rgba(79,195,247,0.05);border:1px solid rgba(79,195,247,0.15);border-radius:12px;padding:1.2rem 1.5rem;">
+      <p style="font-size:1rem;color:rgba(255,255,255,0.9);">
+        <strong class="accent">기존 출역 프로세스에 끼워넣기:</strong>&nbsp;
+        출근 &rarr; QR 출역 &rarr; <strong>콘엑스 세이프 60초</strong> &rarr; TBM &rarr; 작업 투입
+      </p>
+    </div>
+  </div>
+  <div class="slide-number">9 / 14</div>
+</div>
+
+<!-- SLIDE 10: PRODUCT -->
+<div class="slide dark-bg" data-slide="10">
+  <div>
+    <div class="label">PRODUCT</div>
+    <h2>제품 구성</h2>
+    <div class="divider"></div>
+    <div class="two-col" style="gap:2.5rem;">
+      <div>
+        <h3 style="margin-bottom:1.2rem;">근로자용 (모바일 웹)</h3>
+        <div class="flow-card" style="margin-bottom:0.8rem;">
+          <p style="font-size:0.95rem;">QR 스캔 &rarr; 전화번호 입력 &rarr; 3종 인지테스트(60초) &rarr; 결과 확인</p>
+        </div>
+        <ul style="list-style:none;margin-top:1rem;">
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 앱 설치 불필요</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 오프라인 동작 (연결 시 자동 동기화)</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 본인 컨디션 추세 확인</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 게이밍 감지 (대충 클릭 방지)</li>
+        </ul>
+        <h3 style="margin-top:2rem;margin-bottom:1.2rem;">관리자용 (웹 대시보드)</h3>
+        <ul style="list-style:none;">
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 오늘 현장 전체 인지 리스크 현황</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 개인별 30일 추세 그래프</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 위험 판정 시 즉시 카카오 알림</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 월간 리포트 자동 생성 (산안비 증빙)</li>
+          <li style="padding:0.3rem 0;font-size:0.9rem;color:rgba(255,255,255,0.7);">&#10003; 기온/습도 연동 온열질환 위험도</li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:2rem;text-align:center;">
+        <p style="font-size:0.8rem;color:rgba(255,255,255,0.3);margin-bottom:1.5rem;">관리자 대시보드 (예시)</p>
+        <!-- Mock dashboard -->
+        <div style="text-align:left;margin-bottom:1.5rem;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:0.5rem;">오늘 현장 현황 (2026.03.16)</div>
+          <div style="display:flex;gap:0.8rem;">
+            <div style="flex:1;background:rgba(76,175,80,0.1);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:#4caf50;">42</div>
+              <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">정상</div>
+            </div>
+            <div style="flex:1;background:rgba(255,152,0,0.1);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:#ff9800;">3</div>
+              <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">주의</div>
+            </div>
+            <div style="flex:1;background:rgba(244,67,54,0.1);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:#f44336;">1</div>
+              <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">위험</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,0.05);border-radius:8px;padding:0.6rem;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:rgba(255,255,255,0.3);">4</div>
+              <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">미완료</div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:left;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:0.5rem;">위험 알림</div>
+          <div style="background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.2);border-radius:8px;padding:0.7rem;margin-bottom:0.5rem;">
+            <div style="font-size:0.8rem;font-weight:600;color:#f44336;">박OO (철근공) &mdash; 점수 42</div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:0.2rem;">베이스라인 대비 -38점. 반응속도 520ms. 권고: 지상 작업으로 재배치</div>
+          </div>
+          <div style="background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.2);border-radius:8px;padding:0.7rem;">
+            <div style="font-size:0.8rem;font-weight:600;color:#ff9800;">이OO (비계공) &mdash; 점수 64</div>
+            <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:0.2rem;">베이스라인 대비 -15점. Go/No-Go 오클릭 3회. 권고: 고소작업 자제</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">10 / 14</div>
+</div>
+
+<!-- SLIDE 11: PRICING -->
+<div class="slide navy-bg" data-slide="11">
+  <div>
+    <div class="label">PRICING</div>
+    <h2>요금 체계</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:2rem;"><strong class="green">모든 비용은 산업안전보건관리비(산안비)로 100% 처리 가능합니다.</strong></p>
+    <div class="three-col">
+      <div class="price-card">
+        <h3>Basic</h3>
+        <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);">소규모 현장 (30명 이하)</p>
+        <div class="price">30<span style="font-size:1rem;font-weight:400;">만원</span></div>
+        <div class="period">/ 월 (현장당)</div>
+        <ul>
+          <li>인지 테스트 무제한</li>
+          <li>관리자 대시보드</li>
+          <li>카카오 알림</li>
+          <li>월간 리포트</li>
+        </ul>
+      </div>
+      <div class="price-card featured">
+        <h3 class="accent">Pro</h3>
+        <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);">중형 현장 (100명 이하)</p>
+        <div class="price accent">100<span style="font-size:1rem;font-weight:400;">만원</span></div>
+        <div class="period">/ 월 (현장당)</div>
+        <ul>
+          <li>Basic 전체 기능</li>
+          <li>개인 베이스라인 AI</li>
+          <li>기온/습도 연동 위험도</li>
+          <li>TBM 일지 자동 생성</li>
+          <li>전용 담당자 배정</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <h3>Enterprise</h3>
+        <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);">대형 건설사 (다현장)</p>
+        <div class="price">협의</div>
+        <div class="period">맞춤 견적</div>
+        <ul>
+          <li>Pro 전체 기능</li>
+          <li>다현장 통합 관리</li>
+          <li>전자출역부 연동</li>
+          <li>API 연동</li>
+          <li>커스텀 리포트</li>
+          <li>온프레미스 옵션</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">11 / 14</div>
+</div>
+
+<!-- SLIDE 12: ROI -->
+<div class="slide deep-bg" data-slide="12">
+  <div>
+    <div class="label">ROI</div>
+    <h2>도입 효과</h2>
+    <div class="divider"></div>
+    <div class="two-col">
+      <div>
+        <h3 style="margin-bottom:1.5rem;">해외 검증 데이터 기반 기대 효과</h3>
+        <div style="margin-bottom:1.5rem;">
+          <div class="bar-row">
+            <div class="bar-label">사고 심각도</div>
+            <div class="bar-track"><div class="bar-fill green" style="width:68%;">-68%</div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">산재보험 비용</div>
+            <div class="bar-track"><div class="bar-fill green" style="width:70%;">-70%</div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">생산성</div>
+            <div class="bar-track"><div class="bar-fill blue" style="width:45%;">+11%</div></div>
+          </div>
+        </div>
+        <p style="font-size:0.85rem;color:rgba(255,255,255,0.4);">* AlertMeter 7,500만 시간 데이터 기준</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:1.5rem;">비용 시뮬레이션 (중형 현장 기준)</h3>
+        <table class="clean-table">
+          <tr><td>콘엑스 세이프 월 비용</td><td style="text-align:right;font-weight:700;">100만원</td></tr>
+          <tr><td>연간 비용</td><td style="text-align:right;font-weight:700;">1,200만원</td></tr>
+          <tr><td class="dim">산안비 처리</td><td style="text-align:right;color:#4caf50;font-weight:700;">-1,200만원</td></tr>
+          <tr><td style="font-weight:700;">실질 부담</td><td style="text-align:right;font-weight:700;color:#4caf50;">0원</td></tr>
+        </table>
+        <div style="margin-top:1.5rem;background:rgba(244,67,54,0.05);border:1px solid rgba(244,67,54,0.15);border-radius:8px;padding:1rem;">
+          <p style="font-size:0.9rem;">사망사고 1건 발생 시 평균 비용</p>
+          <p style="font-size:1.8rem;font-weight:900;color:#f44336;margin-top:0.3rem;">약 30억원</p>
+          <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:0.3rem;">공사 중단 + 벌금 + 소송 + 보험료 인상 + 입찰 제한</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">12 / 14</div>
+</div>
+
+<!-- SLIDE 13: ROADMAP -->
+<div class="slide dark-bg" data-slide="13">
+  <div>
+    <div class="label">ROADMAP</div>
+    <h2>실행 계획</h2>
+    <div class="divider"></div>
+    <div class="timeline" style="margin-top:2rem;">
+      <div class="timeline-item active">
+        <div class="week">Phase 1 &mdash; 현재</div>
+        <h3>프로토타입 완성</h3>
+        <p>3종 인지 테스트 엔진 개발 완료. 웹 기반 데모 동작 확인.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="week">Phase 2 &mdash; +2개월</div>
+        <h3>MVP + 파일럿</h3>
+        <p>백엔드 + 대시보드. 건설 현장 1~2곳에서 2주 파일럿 운영.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="week">Phase 3 &mdash; +4개월</div>
+        <h3>정식 출시</h3>
+        <p>베이스라인 AI 고도화. 카카오 알림. 리포트 생성. 유료 전환.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="week">Phase 4 &mdash; +8개월</div>
+        <h3>확장</h3>
+        <p>스마트워치 HRV 연동. 기존 안전관리 플랫폼 API 납품. 다산업 확장.</p>
+      </div>
+    </div>
+    <div style="margin-top:3rem;">
+      <h3 style="margin-bottom:1rem;">확장 가능 산업</h3>
+      <div>
+        <span class="tag tag-blue">건설업</span>
+        <span class="tag tag-orange">제조업</span>
+        <span class="tag tag-green">물류/운송</span>
+        <span class="tag tag-blue">광산업</span>
+        <span class="tag tag-orange">에너지/플랜트</span>
+        <span class="tag tag-green">항공/선박</span>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">13 / 14</div>
+</div>
+
+<!-- SLIDE 14: CLOSING -->
+<div class="slide cover-bg" data-slide="14">
+  <div style="text-align:center;">
+    <h1>사고는 피로한 사람에게서<br><span class="accent">시작됩니다</span></h1>
+    <p style="font-size:1.3rem;color:rgba(255,255,255,0.6);margin-top:1rem;margin-bottom:3rem;">
+      매일 60초의 테스트가<br>한 사람의 생명을 지킵니다.
+    </p>
+    <div style="display:inline-block;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem 3rem;">
+      <h2 style="margin-bottom:0.5rem;">콘엑스 <span class="accent">세이프</span></h2>
+      <p style="font-size:1rem;">건설 현장 인지 안전 관리 시스템</p>
+      <div class="divider" style="margin:1rem auto;"></div>
+      <p style="font-size:1rem;color:rgba(255,255,255,0.5);">문의: contact@ddusul.com</p>
+    </div>
+  </div>
+  <div class="slide-number">14 / 14</div>
+</div>
+
+<div class="nav-hint">&#8592; &#8594; 방향키 또는 클릭으로 이동</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goTo(current - 1); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click navigation (left 30% = back, right 70% = forward)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button, a, input')) return;
+    const x = e.clientX / window.innerWidth;
+    if (x < 0.3) goTo(current - 1);
+    else goTo(current + 1);
+  });
+</script>
+</body>
+</html>
